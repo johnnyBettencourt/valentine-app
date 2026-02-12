@@ -204,7 +204,7 @@ function App() {
               onTouchStart={dodgeNoButton}
               onFocus={dodgeNoButton}
               style={{
-                transform: `translate(${noPos.x}px, ${noPos.y}px)`,
+                transform: `translate3d(${noPos.x}px, ${noPos.y}px, 0)`,
                 opacity: noReady ? 1 : 0,
               }}
             >

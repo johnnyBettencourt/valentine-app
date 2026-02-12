@@ -37,6 +37,7 @@ function App() {
   const [noReady, setNoReady] = useState(false)
   const [noAnimated, setNoAnimated] = useState(false)
   const noDodgesRef = useRef(0)
+  const lastDodgeAtRef = useRef(0)
   const yesButtonRef = useRef<HTMLButtonElement>(null)
   const noButtonRef = useRef<HTMLButtonElement>(null)
   const easterEggRef = useRef<HTMLParagraphElement>(null)
@@ -237,6 +238,16 @@ function App() {
     positionNoButton('random', noDodgesRef.current)
   }
 
+  const tryDodgeNoButton = () => {
+    const now = performance.now()
+    // Mobile can fire pointerdown + touchstart for a single tap; collapse near-simultaneous events.
+    if (now - lastDodgeAtRef.current < 170) {
+      return
+    }
+    lastDodgeAtRef.current = now
+    dodgeNoButton()
+  }
+
   return (
     <main className="app">
       <section className={`content ${accepted ? 'content-success' : 'content-question'}`} aria-live="polite">
@@ -284,10 +295,10 @@ function App() {
             className={`action-btn no-btn no-btn-floating ${noAnimated ? 'no-btn-animated' : ''}`}
             ref={noButtonRef}
             type="button"
-            onPointerEnter={dodgeNoButton}
-            onPointerDown={dodgeNoButton}
-            onTouchStart={dodgeNoButton}
-            onFocus={dodgeNoButton}
+            onPointerEnter={tryDodgeNoButton}
+            onPointerDown={tryDodgeNoButton}
+            onTouchStart={tryDodgeNoButton}
+            onFocus={tryDodgeNoButton}
             style={{
               transform: `translate3d(${noPos.x}px, ${noPos.y}px, 0)`,
               opacity: noReady ? 1 : 0,

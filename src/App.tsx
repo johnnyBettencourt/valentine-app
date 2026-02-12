@@ -16,10 +16,22 @@ const REASONS = [
   "You make me do things that are good for me, and yes, I hate that you're usually right.",
   'Our nightly couch reset and doing nothing together are still my favorite parts of every day.',
 ]
+const DODGE_LINES = [
+  'Nope.',
+  'Almost.',
+  'Nice try.',
+  'Not today.',
+  'Still no.',
+  'So close.',
+]
+const EASTER_EGG_AFTER_DODGES = 9
+const NO_DEFAULT_LABEL = 'No'
 
 function App() {
   const [accepted, setAccepted] = useState(false)
   const [reasonIndex, setReasonIndex] = useState(0)
+  const [noLabel, setNoLabel] = useState(NO_DEFAULT_LABEL)
+  const [showConfetti, setShowConfetti] = useState(false)
   const [noPos, setNoPos] = useState({ x: 0, y: 0 })
   const [noReady, setNoReady] = useState(false)
   const [noAnimated, setNoAnimated] = useState(false)
@@ -179,9 +191,27 @@ function App() {
     return () => window.clearInterval(intervalId)
   }, [accepted])
 
+  useEffect(() => {
+    if (!showConfetti) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setShowConfetti(false)
+    }, 1400)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [showConfetti])
+
+  const handleYesClick = () => {
+    setAccepted(true)
+    setShowConfetti(true)
+  }
+
   const dodgeNoButton = () => {
     setNoAnimated(true)
     noDodgesRef.current += 1
+    setNoLabel(DODGE_LINES[(noDodgesRef.current - 1) % DODGE_LINES.length])
     positionNoButton('random', noDodgesRef.current)
   }
 
@@ -198,6 +228,10 @@ function App() {
             <p className="reason-text">{REASONS[reasonIndex]}</p>
             <p className="signoff">{COPY.signoff}</p>
           </>
+        )}
+
+        {!accepted && noDodgesRef.current >= EASTER_EGG_AFTER_DODGES && (
+          <p className="easter-egg easter-egg-floating">okay, this persistence is attractive.</p>
         )}
 
         {accepted && (
@@ -218,7 +252,7 @@ function App() {
             className="action-btn yes-btn yes-btn-floating"
             ref={yesButtonRef}
             type="button"
-            onClick={() => setAccepted(true)}
+            onClick={handleYesClick}
           >
             Yes
           </button>
@@ -235,9 +269,26 @@ function App() {
               opacity: noReady ? 1 : 0,
             }}
           >
-            No
+            {noLabel}
           </button>
         </>
+      )}
+
+      {accepted && showConfetti && (
+        <div className="confetti" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+          <span />
+          <span />
+          <span />
+          <span />
+          <span />
+          <span />
+          <span />
+          <span />
+          <span />
+        </div>
       )}
     </main>
   )

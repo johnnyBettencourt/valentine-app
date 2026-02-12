@@ -23,22 +23,39 @@ function App() {
   const [noPos, setNoPos] = useState({ x: 0, y: 0 })
   const [noReady, setNoReady] = useState(false)
   const playAreaRef = useRef<HTMLDivElement>(null)
+  const yesButtonRef = useRef<HTMLButtonElement>(null)
   const noButtonRef = useRef<HTMLButtonElement>(null)
 
   const getPlayAreaMetrics = useCallback(() => {
     const playArea = playAreaRef.current
+    const yesButton = yesButtonRef.current
     const noButton = noButtonRef.current
 
-    if (!playArea || !noButton) {
+    if (!playArea || !yesButton || !noButton) {
       return null
     }
 
+    const noWidth = noButton.offsetWidth
+    const noHeight = noButton.offsetHeight
     const minX = EDGE_PADDING
     const minY = EDGE_PADDING
-    const maxX = Math.max(minX, playArea.clientWidth - noButton.offsetWidth - EDGE_PADDING)
-    const maxY = Math.max(minY, playArea.clientHeight - noButton.offsetHeight - EDGE_PADDING)
+    const maxX = Math.max(minX, playArea.clientWidth - noWidth - EDGE_PADDING)
+    const maxY = Math.max(minY, playArea.clientHeight - noHeight - EDGE_PADDING)
 
-    return { minX, minY, maxX, maxY }
+    return {
+      minX,
+      minY,
+      maxX,
+      maxY,
+      noWidth,
+      noHeight,
+      yesRect: {
+        left: yesButton.offsetLeft,
+        top: yesButton.offsetTop,
+        right: yesButton.offsetLeft + yesButton.offsetWidth,
+        bottom: yesButton.offsetTop + yesButton.offsetHeight,
+      },
+    }
   }, [])
 
   const positionNoButton = useCallback(
@@ -57,9 +74,25 @@ function App() {
         }
 
         if (mode === 'clamp') {
-          return {
+          const clamped = {
             x: Math.min(metrics.maxX, Math.max(metrics.minX, current.x)),
             y: Math.min(metrics.maxY, Math.max(metrics.minY, current.y)),
+          }
+
+          const overlapPadding = 6
+          const overlapsYes =
+            clamped.x < metrics.yesRect.right + overlapPadding &&
+            clamped.x + metrics.noWidth > metrics.yesRect.left - overlapPadding &&
+            clamped.y < metrics.yesRect.bottom + overlapPadding &&
+            clamped.y + metrics.noHeight > metrics.yesRect.top - overlapPadding
+
+          if (!overlapsYes) {
+            return clamped
+          }
+
+          return {
+            x: metrics.maxX,
+            y: metrics.minY,
           }
         }
 
@@ -67,16 +100,23 @@ function App() {
         const rangeY = metrics.maxY - metrics.minY
         const maxDistance = Math.hypot(rangeX, rangeY)
         const minJumpDistance = maxDistance * 0.5
+        const overlapPadding = 6
 
         const randomPoint = () => ({
           x: metrics.minX + Math.random() * (rangeX || 1),
           y: metrics.minY + Math.random() * (rangeY || 1),
         })
 
+        const overlapsYes = (x: number, y: number) =>
+          x < metrics.yesRect.right + overlapPadding &&
+          x + metrics.noWidth > metrics.yesRect.left - overlapPadding &&
+          y < metrics.yesRect.bottom + overlapPadding &&
+          y + metrics.noHeight > metrics.yesRect.top - overlapPadding
+
         for (let attempt = 0; attempt < 18; attempt += 1) {
           const next = randomPoint()
           const distance = Math.hypot(next.x - current.x, next.y - current.y)
-          if (distance >= minJumpDistance) {
+          if (distance >= minJumpDistance && !overlapsYes(next.x, next.y)) {
             return next
           }
         }
@@ -88,7 +128,10 @@ function App() {
           { x: metrics.maxX, y: metrics.maxY },
         ]
 
-        return corners.reduce((farthest, corner) =>
+        const validCorners = corners.filter((corner) => !overlapsYes(corner.x, corner.y))
+        const candidates = validCorners.length > 0 ? validCorners : corners
+
+        return candidates.reduce((farthest, corner) =>
           Math.hypot(corner.x - current.x, corner.y - current.y) >
           Math.hypot(farthest.x - current.x, farthest.y - current.y)
             ? corner
@@ -144,7 +187,12 @@ function App() {
 
         {!accepted && (
           <div className="play-area" ref={playAreaRef}>
-            <button className="action-btn yes-btn" type="button" onClick={() => setAccepted(true)}>
+            <button
+              className="action-btn yes-btn"
+              ref={yesButtonRef}
+              type="button"
+              onClick={() => setAccepted(true)}
+            >
               Yes
             </button>
             <button

@@ -32,12 +32,14 @@ function App() {
   const [reasonIndex, setReasonIndex] = useState(0)
   const [noLabel, setNoLabel] = useState(NO_DEFAULT_LABEL)
   const [showConfetti, setShowConfetti] = useState(false)
+  const [showYesPulse, setShowYesPulse] = useState(true)
   const [noPos, setNoPos] = useState({ x: 0, y: 0 })
   const [noReady, setNoReady] = useState(false)
   const [noAnimated, setNoAnimated] = useState(false)
   const noDodgesRef = useRef(0)
   const yesButtonRef = useRef<HTMLButtonElement>(null)
   const noButtonRef = useRef<HTMLButtonElement>(null)
+  const easterEggRef = useRef<HTMLParagraphElement>(null)
 
   const getViewportMetrics = useCallback(() => {
     const yesButton = yesButtonRef.current
@@ -54,6 +56,7 @@ function App() {
     const maxX = Math.max(minX, window.innerWidth - noWidth - EDGE_PADDING)
     const maxY = Math.max(minY, window.innerHeight - noHeight - EDGE_PADDING)
     const yesRect = yesButton.getBoundingClientRect()
+    const easterRect = easterEggRef.current?.getBoundingClientRect()
 
     return {
       minX,
@@ -62,12 +65,24 @@ function App() {
       maxY,
       noWidth,
       noHeight,
-      yesRect: {
-        left: yesRect.left,
-        top: yesRect.top,
-        right: yesRect.right,
-        bottom: yesRect.bottom,
-      },
+      protectedRects: [
+        {
+          left: yesRect.left,
+          top: yesRect.top,
+          right: yesRect.right,
+          bottom: yesRect.bottom,
+        },
+        ...(easterRect
+          ? [
+              {
+                left: easterRect.left,
+                top: easterRect.top,
+                right: easterRect.right,
+                bottom: easterRect.bottom,
+              },
+            ]
+          : []),
+      ],
     }
   }, [])
 
@@ -83,10 +98,10 @@ function App() {
           const gap = 12
           const desiredY = Math.min(
             metrics.maxY,
-            Math.max(metrics.minY, metrics.yesRect.top),
+            Math.max(metrics.minY, metrics.protectedRects[0].top),
           )
-          const rightOfYes = metrics.yesRect.right + gap
-          const leftOfYes = metrics.yesRect.left - metrics.noWidth - gap
+          const rightOfYes = metrics.protectedRects[0].right + gap
+          const leftOfYes = metrics.protectedRects[0].left - metrics.noWidth - gap
 
           return {
             x:
@@ -103,14 +118,16 @@ function App() {
             y: Math.min(metrics.maxY, Math.max(metrics.minY, current.y)),
           }
 
-          const overlapPadding = 6
-          const overlapsYes =
-            clamped.x < metrics.yesRect.right + overlapPadding &&
-            clamped.x + metrics.noWidth > metrics.yesRect.left - overlapPadding &&
-            clamped.y < metrics.yesRect.bottom + overlapPadding &&
-            clamped.y + metrics.noHeight > metrics.yesRect.top - overlapPadding
+          const overlapPadding = 8
+          const overlapsProtected = metrics.protectedRects.some(
+            (rect) =>
+              clamped.x < rect.right + overlapPadding &&
+              clamped.x + metrics.noWidth > rect.left - overlapPadding &&
+              clamped.y < rect.bottom + overlapPadding &&
+              clamped.y + metrics.noHeight > rect.top - overlapPadding,
+          )
 
-          if (!overlapsYes) {
+          if (!overlapsProtected) {
             return clamped
           }
 
@@ -125,23 +142,26 @@ function App() {
         const maxDistance = Math.hypot(rangeX, rangeY)
         const jumpFactor = dodgeCount < 3 ? 0.34 : 0.42
         const minJumpDistance = maxDistance * jumpFactor
-        const overlapPadding = 6
+        const overlapPadding = 8
 
         const randomPoint = () => ({
           x: metrics.minX + Math.random() * (rangeX || 1),
           y: metrics.minY + Math.random() * (rangeY || 1),
         })
 
-        const overlapsYes = (x: number, y: number) =>
-          x < metrics.yesRect.right + overlapPadding &&
-          x + metrics.noWidth > metrics.yesRect.left - overlapPadding &&
-          y < metrics.yesRect.bottom + overlapPadding &&
-          y + metrics.noHeight > metrics.yesRect.top - overlapPadding
+        const overlapsProtected = (x: number, y: number) =>
+          metrics.protectedRects.some(
+            (rect) =>
+              x < rect.right + overlapPadding &&
+              x + metrics.noWidth > rect.left - overlapPadding &&
+              y < rect.bottom + overlapPadding &&
+              y + metrics.noHeight > rect.top - overlapPadding,
+          )
 
         for (let attempt = 0; attempt < 18; attempt += 1) {
           const next = randomPoint()
           const distance = Math.hypot(next.x - current.x, next.y - current.y)
-          if (distance >= minJumpDistance && !overlapsYes(next.x, next.y)) {
+          if (distance >= minJumpDistance && !overlapsProtected(next.x, next.y)) {
             return next
           }
         }
@@ -153,7 +173,7 @@ function App() {
           { x: metrics.maxX, y: metrics.maxY },
         ]
 
-        const validCorners = corners.filter((corner) => !overlapsYes(corner.x, corner.y))
+        const validCorners = corners.filter((corner) => !overlapsProtected(corner.x, corner.y))
         const candidates = validCorners.length > 0 ? validCorners : corners
 
         return candidates.reduce((farthest, corner) =>
@@ -204,11 +224,13 @@ function App() {
   }, [showConfetti])
 
   const handleYesClick = () => {
+    setShowYesPulse(false)
     setAccepted(true)
     setShowConfetti(true)
   }
 
   const dodgeNoButton = () => {
+    setShowYesPulse(false)
     setNoAnimated(true)
     noDodgesRef.current += 1
     setNoLabel(DODGE_LINES[(noDodgesRef.current - 1) % DODGE_LINES.length])
@@ -217,7 +239,7 @@ function App() {
 
   return (
     <main className="app">
-      <section className="content" aria-live="polite">
+      <section className={`content ${accepted ? 'content-success' : 'content-question'}`} aria-live="polite">
         <p className="tagline">{COPY.intro}</p>
         <h1 className="title">{accepted ? COPY.successTitle : COPY.question}</h1>
 
@@ -231,7 +253,9 @@ function App() {
         )}
 
         {!accepted && noDodgesRef.current >= EASTER_EGG_AFTER_DODGES && (
-          <p className="easter-egg easter-egg-floating">okay, this persistence is attractive.</p>
+          <p className="easter-egg easter-egg-floating" ref={easterEggRef}>
+            okay, this persistence is attractive.
+          </p>
         )}
 
         {accepted && (
@@ -249,7 +273,7 @@ function App() {
       {!accepted && (
         <>
           <button
-            className="action-btn yes-btn yes-btn-floating"
+            className={`action-btn yes-btn yes-btn-floating ${showYesPulse ? 'yes-btn-pulse' : ''}`}
             ref={yesButtonRef}
             type="button"
             onClick={handleYesClick}

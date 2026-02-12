@@ -11,6 +11,18 @@
   margin-top: clamp(5rem, 24vh, 11rem);
   padding: 1.25rem 0.75rem;
   text-align: center;
+  position: relative;
+}
+
+.content::before {
+  content: '';
+  position: absolute;
+  inset: -0.35rem;
+  border-radius: 18px;
+  background: rgba(255, 250, 253, 0.58);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 8px 22px rgba(190, 74, 116, 0.1);
+  z-index: -1;
 }
 
 .title {
@@ -30,6 +42,8 @@
 
 .message {
   margin: 0.75rem 0 0;
+  max-width: 31ch;
+  margin-inline: auto;
   font-size: 1.1rem;
   color: #8c2850;
 }
@@ -59,7 +73,7 @@
 .easter-egg-floating {
   position: fixed;
   left: 50%;
-  top: clamp(0.8rem, 4vh, 2.25rem);
+  top: calc(env(safe-area-inset-top, 0px) + clamp(0.5rem, 2.5vh, 1.25rem));
   transform: translateX(-50%);
   margin: 0;
   padding: 0.42rem 0.65rem;
@@ -109,13 +123,17 @@
   z-index: 20;
 }
 
+.yes-btn-pulse {
+  animation: yes-heartbeat 2s ease-in-out infinite;
+}
+
 .no-btn {
   position: fixed;
   top: 0;
   left: 0;
   width: var(--btn-width);
   background: #ffffff;
-  color: #923056;
+  color: #6f1d46;
   border: 2px solid #f8b5ce;
   will-change: transform;
   backface-visibility: hidden;
@@ -129,6 +147,33 @@
 
 .no-btn-animated {
   transition: transform 190ms ease-out, opacity 120ms ease-out;
+}
+
+.content h1,
+.content .message,
+.content .reason-label,
+.content .reason-text,
+.content .signoff {
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.content-question h1,
+.content-question .message,
+.content-question .reason-label,
+.content-question .reason-text,
+.content-question .signoff {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.content-success h1,
+.content-success .message,
+.content-success .reason-label,
+.content-success .reason-text,
+.content-success .signoff {
+  opacity: 1;
+  transform: translateY(0);
+  animation: fade-up 180ms ease both;
 }
 
 .confetti {
@@ -287,6 +332,31 @@
   100% {
     transform: translateY(110vh) rotate(520deg);
     opacity: 0.1;
+  }
+}
+
+@keyframes yes-heartbeat {
+  0%,
+  55%,
+  100% {
+    transform: translate(calc(-100% - 8px), -50%) scale(1);
+  }
+  62% {
+    transform: translate(calc(-100% - 8px), -50%) scale(1.035);
+  }
+  70% {
+    transform: translate(calc(-100% - 8px), -50%) scale(1);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 

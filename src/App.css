@@ -1,18 +1,15 @@
 .app {
   min-height: 100dvh;
   display: grid;
-  place-items: center;
+  justify-items: center;
+  align-content: start;
   padding: 1.25rem;
 }
 
-.card {
+.content {
   width: min(100%, 420px);
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.84);
-  border: 1px solid rgba(255, 255, 255, 0.58);
-  box-shadow: 0 20px 40px rgba(182, 54, 94, 0.22);
-  backdrop-filter: blur(4px);
-  padding: 1.5rem;
+  margin-top: clamp(5rem, 24vh, 11rem);
+  padding: 1.25rem 0.75rem;
   text-align: center;
 }
 
@@ -65,20 +62,9 @@
   color: #8a2e55;
 }
 
-.play-area {
-  --edge-gap: 12px;
-  --button-gap: 12px;
-  margin-top: 1.25rem;
-  position: relative;
-  height: 220px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, #ffe5f2, #ffeef8);
-  border: 1px solid #ffd2e4;
-  overflow: hidden;
-}
-
 .action-btn {
-  width: calc((100% - (var(--edge-gap) * 2) - var(--button-gap)) / 2);
+  --btn-width: clamp(120px, 44vw, 180px);
+  width: var(--btn-width);
   min-height: 56px;
   border: none;
   border-radius: 999px;
@@ -90,26 +76,39 @@
 }
 
 .yes-btn {
-  position: absolute;
-  left: var(--edge-gap);
-  bottom: var(--edge-gap);
+  position: relative;
   background: linear-gradient(135deg, #ff4f93, #ff6ba8);
   color: #fff;
   box-shadow: 0 8px 18px rgba(238, 63, 132, 0.35);
 }
 
+.yes-btn-floating {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(calc(-100% - 8px), -50%);
+  z-index: 20;
+}
+
 .no-btn {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   background: #ffffff;
   color: #923056;
   border: 2px solid #f8b5ce;
-  transition: transform 140ms ease-out, opacity 100ms ease-out;
   will-change: transform;
   backface-visibility: hidden;
   -webkit-user-select: none;
   user-select: none;
+}
+
+.no-btn-floating {
+  z-index: 30;
+}
+
+.no-btn-animated {
+  transition: transform 190ms ease-out, opacity 120ms ease-out;
 }
 
 .hearts {
@@ -170,11 +169,7 @@
 }
 
 @media (min-width: 768px) {
-  .card {
-    padding: 2rem;
-  }
-
-  .play-area {
-    height: 240px;
+  .content {
+    padding: 1.5rem 0.75rem;
   }
 }

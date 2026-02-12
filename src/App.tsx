@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import './App.css'
 
 const EDGE_PADDING = 12
@@ -22,16 +22,16 @@ function App() {
   const [reasonIndex, setReasonIndex] = useState(0)
   const [noPos, setNoPos] = useState({ x: 0, y: 0 })
   const [noReady, setNoReady] = useState(false)
-  const playAreaRef = useRef<HTMLDivElement>(null)
+  const [noAnimated, setNoAnimated] = useState(false)
+  const noDodgesRef = useRef(0)
   const yesButtonRef = useRef<HTMLButtonElement>(null)
   const noButtonRef = useRef<HTMLButtonElement>(null)
 
-  const getPlayAreaMetrics = useCallback(() => {
-    const playArea = playAreaRef.current
+  const getViewportMetrics = useCallback(() => {
     const yesButton = yesButtonRef.current
     const noButton = noButtonRef.current
 
-    if (!playArea || !yesButton || !noButton) {
+    if (!yesButton || !noButton) {
       return null
     }
 
@@ -39,8 +39,9 @@ function App() {
     const noHeight = noButton.offsetHeight
     const minX = EDGE_PADDING
     const minY = EDGE_PADDING
-    const maxX = Math.max(minX, playArea.clientWidth - noWidth - EDGE_PADDING)
-    const maxY = Math.max(minY, playArea.clientHeight - noHeight - EDGE_PADDING)
+    const maxX = Math.max(minX, window.innerWidth - noWidth - EDGE_PADDING)
+    const maxY = Math.max(minY, window.innerHeight - noHeight - EDGE_PADDING)
+    const yesRect = yesButton.getBoundingClientRect()
 
     return {
       minX,
@@ -50,26 +51,37 @@ function App() {
       noWidth,
       noHeight,
       yesRect: {
-        left: yesButton.offsetLeft,
-        top: yesButton.offsetTop,
-        right: yesButton.offsetLeft + yesButton.offsetWidth,
-        bottom: yesButton.offsetTop + yesButton.offsetHeight,
+        left: yesRect.left,
+        top: yesRect.top,
+        right: yesRect.right,
+        bottom: yesRect.bottom,
       },
     }
   }, [])
 
   const positionNoButton = useCallback(
-    (mode: 'initial' | 'random' | 'clamp') => {
-      const metrics = getPlayAreaMetrics()
+    (mode: 'initial' | 'random' | 'clamp', dodgeCount = 0) => {
+      const metrics = getViewportMetrics()
       if (!metrics) {
         return
       }
 
       setNoPos((current) => {
         if (mode === 'initial') {
+          const gap = 12
+          const desiredY = Math.min(
+            metrics.maxY,
+            Math.max(metrics.minY, metrics.yesRect.top),
+          )
+          const rightOfYes = metrics.yesRect.right + gap
+          const leftOfYes = metrics.yesRect.left - metrics.noWidth - gap
+
           return {
-            x: metrics.maxX,
-            y: metrics.maxY,
+            x:
+              rightOfYes <= metrics.maxX
+                ? rightOfYes
+                : Math.max(metrics.minX, Math.min(metrics.maxX, leftOfYes)),
+            y: desiredY,
           }
         }
 
@@ -99,7 +111,8 @@ function App() {
         const rangeX = metrics.maxX - metrics.minX
         const rangeY = metrics.maxY - metrics.minY
         const maxDistance = Math.hypot(rangeX, rangeY)
-        const minJumpDistance = maxDistance * 0.5
+        const jumpFactor = dodgeCount < 3 ? 0.34 : 0.42
+        const minJumpDistance = maxDistance * jumpFactor
         const overlapPadding = 6
 
         const randomPoint = () => ({
@@ -141,10 +154,10 @@ function App() {
 
       setNoReady(true)
     },
-    [getPlayAreaMetrics],
+    [getViewportMetrics],
   )
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     positionNoButton('initial')
   }, [positionNoButton])
 
@@ -167,12 +180,14 @@ function App() {
   }, [accepted])
 
   const dodgeNoButton = () => {
-    positionNoButton('random')
+    setNoAnimated(true)
+    noDodgesRef.current += 1
+    positionNoButton('random', noDodgesRef.current)
   }
 
   return (
     <main className="app">
-      <section className="card" aria-live="polite">
+      <section className="content" aria-live="polite">
         <p className="tagline">{COPY.intro}</p>
         <h1 className="title">{accepted ? COPY.successTitle : COPY.question}</h1>
 
@@ -183,34 +198,6 @@ function App() {
             <p className="reason-text">{REASONS[reasonIndex]}</p>
             <p className="signoff">{COPY.signoff}</p>
           </>
-        )}
-
-        {!accepted && (
-          <div className="play-area" ref={playAreaRef}>
-            <button
-              className="action-btn yes-btn"
-              ref={yesButtonRef}
-              type="button"
-              onClick={() => setAccepted(true)}
-            >
-              Yes
-            </button>
-            <button
-              className="action-btn no-btn"
-              ref={noButtonRef}
-              type="button"
-              onPointerEnter={dodgeNoButton}
-              onPointerDown={dodgeNoButton}
-              onTouchStart={dodgeNoButton}
-              onFocus={dodgeNoButton}
-              style={{
-                transform: `translate3d(${noPos.x}px, ${noPos.y}px, 0)`,
-                opacity: noReady ? 1 : 0,
-              }}
-            >
-              No
-            </button>
-          </div>
         )}
 
         {accepted && (
@@ -224,6 +211,34 @@ function App() {
           </div>
         )}
       </section>
+
+      {!accepted && (
+        <>
+          <button
+            className="action-btn yes-btn yes-btn-floating"
+            ref={yesButtonRef}
+            type="button"
+            onClick={() => setAccepted(true)}
+          >
+            Yes
+          </button>
+          <button
+            className={`action-btn no-btn no-btn-floating ${noAnimated ? 'no-btn-animated' : ''}`}
+            ref={noButtonRef}
+            type="button"
+            onPointerEnter={dodgeNoButton}
+            onPointerDown={dodgeNoButton}
+            onTouchStart={dodgeNoButton}
+            onFocus={dodgeNoButton}
+            style={{
+              transform: `translate3d(${noPos.x}px, ${noPos.y}px, 0)`,
+              opacity: noReady ? 1 : 0,
+            }}
+          >
+            No
+          </button>
+        </>
+      )}
     </main>
   )
 }
